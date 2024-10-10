@@ -162,5 +162,63 @@ router.post("/fundraiser", (req, res) => {
 });
 
 
+// Update an existing fundraiser
+router.put("/fundraiser/:id", (req, res) => {
+    const fundraiserID = req.params.id;
+    const { organizer, caption, target_funding, current_funding, city, active, category_id } = req.body;
+
+    const query = `
+        UPDATE FUNDRAISER SET 
+        ORGANIZER = ${connection.escape(organizer)}, 
+        CAPTION = ${connection.escape(caption)}, 
+        TARGET_FUNDING = ${connection.escape(target_funding)}, 
+        CURRENT_FUNDING = ${connection.escape(current_funding)}, 
+        CITY = ${connection.escape(city)}, 
+        ACTIVE = ${connection.escape(active)}, 
+        CATEGORY_ID = ${connection.escape(category_id)}
+        WHERE FUNDRAISER_ID = ${connection.escape(fundraiserID)};
+    `;
+
+    connection.query(query, (err, result) => {
+        if (err) {
+            console.error("Error while updating fundraiser: " + err);
+            res.status(500).send("Error updating fundraiser.");
+        } else {
+            res.send("Fundraiser updated successfully.");
+        }
+    });
+});
+
+// Delete a fundraiser
+router.delete("/fundraiser/:id", (req, res) => {
+    const fundraiserID = req.params.id;
+
+    const checkDonationsQuery = `
+        SELECT COUNT(*) AS donationCount FROM DONATION WHERE FUNDRAISER_ID = ${connection.escape(fundraiserID)};
+    `;
+
+    connection.query(checkDonationsQuery, (err, records) => {
+        if (err) {
+            console.error("Error while checking donations: " + err);
+            res.status(500).send("Error checking donations.");
+        } else if (records[0].donationCount > 0) {
+            res.status(400).send("Cannot delete fundraiser with existing donations.");
+        } else {
+            const deleteQuery = `
+                DELETE FROM FUNDRAISER WHERE FUNDRAISER_ID = ${connection.escape(fundraiserID)};
+            `;
+
+            connection.query(deleteQuery, (err, result) => {
+                if (err) {
+                    console.error("Error while deleting fundraiser: " + err);
+                    res.status(500).send("Error deleting fundraiser.");
+                } else {
+                    res.send("Fundraiser deleted successfully.");
+                }
+            });
+        }
+    });
+});
+
 
 module.exports = router;
